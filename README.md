@@ -108,7 +108,7 @@
 
 ### Method 1: WordPress Admin (Recommended)
 
-1. Download the latest release from [GitHub Releases](https://github.com/liveupx/x-security/releases)
+1. Download the latest release from [GitHub Releases](https://github.com/liveupx/x-security-wordpress-security-plugin-free/releases)
 2. Go to **WordPress Admin → Plugins → Add New**
 3. Click **Upload Plugin**
 4. Choose the downloaded `x-security.zip` file
@@ -365,7 +365,7 @@ We welcome contributions from the community! Here's how you can help:
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/liveupx/x-security.git
+   git clone https://github.com/liveupx/x-security-wordpress-security-plugin-free.git
    ```
 
 2. Set up a local WordPress development environment
@@ -480,7 +480,7 @@ Planned features for future releases:
 - [ ] Security headers management
 - [ ] Import/Export settings
 
-Want to vote on features? [Open a discussion](https://github.com/liveupx/x-security/discussions)!
+Want to vote on features? [Open a discussion](https://github.com/liveupx/x-security-wordpress-security-plugin-free/discussions)!
 
 ---
 
@@ -489,8 +489,8 @@ Want to vote on features? [Open a discussion](https://github.com/liveupx/x-secur
 ### Free Support
 
 - 📖 [Documentation](https://liveupx.com/docs/x-security)
-- 💬 [GitHub Discussions](https://github.com/liveupx/x-security/discussions)
-- 🐛 [Issue Tracker](https://github.com/liveupx/x-security/issues)
+- 💬 [GitHub Discussions](https://github.com/liveupx/x-security-wordpress-security-plugin-free/discussions)
+- 🐛 [Issue Tracker](https://github.com/liveupx/x-security-wordpress-security-plugin-free/issues)
 - 📧 Email: support@liveupx.com
 
 ### Premium Support
