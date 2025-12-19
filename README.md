@@ -225,20 +225,22 @@ Whitelisted IPs bypass all security checks:
 ## 📸 Screenshots
 
 ### Dashboard
-![Dashboard](screenshots/dashboard.png)
-*Security dashboard with score, stats, and recent activity*
+![Dashboard](img/1.png)
 
-### Settings
-![Settings](screenshots/settings.png)
-*Configure all security features from one page*
+### Security
+![Security Settings](img/2.png)
+
+### Login Security
+![Login Security](img/3.png)
+
+### Firewall & .htaccess Manager
+![Firewall & .htaccess Manager](img/4.png)
 
 ### IP Manager
-![IP Manager](screenshots/ip-manager.png)
-*Block and whitelist IP addresses*
+![IP Manager](img/5.png)
 
-### Activity Log
-![Activity Log](screenshots/activity-log.png)
-*Monitor all security events*
+### Security Activity Log
+![Security Activity Log](img/6.png)
 
 ---
 
