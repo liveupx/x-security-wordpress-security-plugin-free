@@ -1,6 +1,6 @@
 # X Security by Liveupx.com
 
-![WordPress Plugin Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
+![WordPress Plugin Version](https://img.shields.io/badge/version-1.5.0-blue.svg)
 ![WordPress Tested](https://img.shields.io/badge/WordPress-6.7%20tested-green.svg)
 ![PHP Version](https://img.shields.io/badge/PHP-7.4%2B-purple.svg)
 ![License](https://img.shields.io/badge/license-GPL--2.0%2B-orange.svg)
@@ -424,6 +424,34 @@ In addition to using X Security, we recommend:
 
 ## 📝 Changelog
 
+### Version 1.5.0 (2024-12-19)
+**Full PHPCS Compliance**
+
+- 🔧 Fixed all remaining WordPress Plugin Check warnings
+- 🔧 Improved SQL query handling with proper phpcs directives
+- 🔧 Enhanced array input sanitization using `map_deep()`
+- 🔧 Full WordPress coding standards compliance
+- 🔧 Ready for WordPress.org submission
+
+### Version 1.4.0 (2024-12-19)
+**Compatibility & Security**
+
+- 🔧 Fixed compatibility with WordPress 5.0+ (removed %i placeholder)
+- 🔧 Improved input sanitization for settings array
+- 🔧 Enhanced security validation
+
+### Version 1.3.0 (2024-12-19)
+**Bug Fixes & Improvements**
+
+- 🔧 Fixed WordPress Playground compatibility
+- 🔧 Fixed all WordPress Plugin Check errors
+- 🔧 Uses WP_Filesystem for file operations
+- 🔧 Improved code quality and PHPCS compliance
+- 🔧 Added proper translators comments for i18n
+- 🔧 Enhanced database query security
+- 🔧 Properly escaped all output
+- 🔧 Added phpcs ignore comments with justifications
+
 ### Version 1.0.0 (2024-12-19)
 **Initial Release**
 
@@ -458,19 +486,19 @@ In addition to using X Security, we recommend:
 
 Planned features for future releases:
 
-### Version 1.1.0
+### Version 1.6.0
 - [ ] Two-Factor Authentication (TOTP)
 - [ ] Login page reCAPTCHA integration
 - [ ] Custom login URL
 - [ ] Force logout all users
 
-### Version 1.2.0
+### Version 1.7.0
 - [ ] File change detection
 - [ ] Malware scanning
 - [ ] Database backup
 - [ ] Database prefix changer
 
-### Version 1.3.0
+### Version 1.8.0
 - [ ] Country blocking
 - [ ] Rate limiting
 - [ ] Comment spam protection

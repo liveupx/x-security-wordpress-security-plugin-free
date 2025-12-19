@@ -1,0 +1,409 @@
+# WordPress Plugin Submission Guidelines Checklist
+## Essential Requirements for WordPress.org Plugin Review
+
+This document contains all requirements and best practices to follow when developing WordPress plugins for submission to WordPress.org repository.
+
+---
+
+## 🚨 TOP 3 REJECTION REASONS (MOST COMMON)
+
+### 1. UNESCAPED OUTPUT
+```php
+// ❌ WRONG - Never do this
+echo $variable;
+echo $_GET['param'];
+
+// ✅ CORRECT - Always escape output
+echo esc_html( $variable );
+echo esc_attr( $attribute );
+echo esc_url( $url );
+echo wp_kses_post( $html_content );
+```
+
+### 2. UNSANITIZED INPUT
+```php
+// ❌ WRONG - Never use raw input
+$name = $_POST['name'];
+
+// ✅ CORRECT - Always sanitize input
+$name = isset( $_POST['name'] ) ? sanitize_text_field( wp_unslash( $_POST['name'] ) ) : '';
+$email = isset( $_POST['email'] ) ? sanitize_email( wp_unslash( $_POST['email'] ) ) : '';
+$id = isset( $_GET['id'] ) ? absint( $_GET['id'] ) : 0;
+
+// For arrays, use map_deep()
+$settings = isset( $_POST['settings'] ) ? map_deep( wp_unslash( $_POST['settings'] ), 'sanitize_text_field' ) : array();
+```
+
+### 3. MISSING NONCE VERIFICATION
+```php
+// ❌ WRONG - No nonce check
+if ( isset( $_POST['save'] ) ) {
+    update_option( 'my_option', $_POST['value'] );
+}
+
+// ✅ CORRECT - Always verify nonce
+if ( isset( $_POST['save'] ) && check_admin_referer( 'my_action_nonce', 'my_nonce_field' ) ) {
+    update_option( 'my_option', sanitize_text_field( wp_unslash( $_POST['value'] ) ) );
+}
+
+// For AJAX
+if ( ! check_ajax_referer( 'my_ajax_nonce', 'nonce', false ) ) {
+    wp_send_json_error( 'Security check failed' );
+}
+```
+
+---
+
+## 📋 PLUGIN HEADERS (Required)
+
+```php
+/**
+ * Plugin Name: Your Plugin Name
+ * Plugin URI: https://yoursite.com/plugin-page
+ * Description: Short description of your plugin.
+ * Version: 1.0.0
+ * Author: Your Name
+ * Author URI: https://yoursite.com
+ * License: GPL v2 or later
+ * License URI: https://www.gnu.org/licenses/gpl-2.0.html
+ * Text Domain: your-plugin-slug
+ * Domain Path: /languages
+ * Requires at least: 5.0
+ * Tested up to: 6.9
+ * Requires PHP: 7.4
+ */
+```
+
+### Header Rules:
+- **Plugin URI** and **Author URI** MUST be different URLs
+- **Plugin URI** should NOT point to wordpress.org until approved
+- **Text Domain** must match plugin slug exactly
+- **Tested up to** must be current WordPress version
+- Remove `load_plugin_textdomain()` - WordPress.org loads translations automatically
+
+---
+
+## 🔒 SECURITY REQUIREMENTS
+
+### Database Queries
+```php
+// ❌ WRONG - Direct interpolation
+$wpdb->query( "SELECT * FROM {$table} WHERE id = {$id}" );
+
+// ✅ CORRECT - Use prepare() for values
+$wpdb->get_results( $wpdb->prepare(
+    "SELECT * FROM {$wpdb->prefix}my_table WHERE id = %d",
+    $id
+) );
+
+// For table names (no identifier placeholder in WP < 6.2)
+// Use esc_sql() and phpcs:ignore comment
+// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- Safe table name using esc_sql.
+$wpdb->query( 'DROP TABLE IF EXISTS `' . esc_sql( $wpdb->prefix . 'my_table' ) . '`' );
+```
+
+### Capability Checks
+```php
+// Always check user capabilities
+if ( ! current_user_can( 'manage_options' ) ) {
+    wp_die( 'Unauthorized access' );
+}
+```
+
+### File Operations - Use WP_Filesystem
+```php
+// ❌ WRONG - Direct PHP functions
+if ( is_writable( $file ) ) {
+    file_put_contents( $file, $content );
+}
+
+// ✅ CORRECT - Use WP_Filesystem
+if ( ! function_exists( 'WP_Filesystem' ) ) {
+    require_once ABSPATH . 'wp-admin/includes/file.php';
+}
+WP_Filesystem();
+global $wp_filesystem;
+
+if ( $wp_filesystem->is_writable( $file ) ) {
+    $wp_filesystem->put_contents( $file, $content, FS_CHMOD_FILE );
+}
+```
+
+---
+
+## 🌍 INTERNATIONALIZATION (i18n)
+
+### Always Use Translation Functions
+```php
+// Simple strings
+__( 'Hello World', 'your-text-domain' );
+_e( 'Hello World', 'your-text-domain' ); // Echo version
+esc_html__( 'Hello World', 'your-text-domain' );
+esc_html_e( 'Hello World', 'your-text-domain' );
+
+// Strings with placeholders MUST have translators comment
+/* translators: %s: user name */
+sprintf( __( 'Hello %s', 'your-text-domain' ), $name );
+
+/* translators: 1: number of items, 2: item type */
+sprintf( __( 'Found %1$d %2$s', 'your-text-domain' ), $count, $type );
+```
+
+---
+
+## 📝 CODING STANDARDS
+
+### Naming Conventions - Prefix Everything
+```php
+// Prefix all functions, classes, constants, and global variables
+function yourprefix_my_function() {}
+class YourPrefix_My_Class {}
+define( 'YOURPREFIX_VERSION', '1.0.0' );
+global $yourprefix_settings;
+
+// When using WordPress core constants, add phpcs:ignore
+// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedConstantFound -- WordPress core constant.
+define( 'DISALLOW_FILE_EDIT', true );
+```
+
+### PHPCS Ignore Comments
+When you must bypass a rule, always explain why:
+```php
+// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- Security plugin requires real-time data.
+// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Nonce verified in parent function.
+// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Input is sanitized via map_deep.
+```
+
+---
+
+## 📁 FILE STRUCTURE
+
+```
+your-plugin/
+├── your-plugin.php          # Main plugin file
+├── readme.txt                # WordPress.org readme (REQUIRED)
+├── README.md                 # GitHub readme
+├── uninstall.php             # Cleanup on uninstall
+├── index.php                 # Silence is golden (in EVERY folder)
+├── languages/
+│   └── index.php
+├── includes/
+│   ├── index.php
+│   └── class-*.php
+├── admin/
+│   ├── index.php
+│   └── class-*-admin.php
+├── assets/
+│   ├── index.php
+│   ├── css/
+│   │   └── index.php
+│   └── js/
+│       └── index.php
+└── templates/
+    └── index.php
+```
+
+### Index.php Files (Security)
+Every directory MUST have an index.php:
+```php
+<?php
+// Silence is golden.
+```
+
+---
+
+## 📖 README.TXT REQUIREMENTS
+
+### Required Sections
+```
+=== Plugin Name ===
+Contributors: yourusername
+Tags: tag1, tag2, tag3, tag4, tag5 (max 5 displayed)
+Requires at least: 5.0
+Tested up to: 6.9
+Requires PHP: 7.4
+Stable tag: 1.0.0
+License: GPLv2 or later
+License URI: https://www.gnu.org/licenses/gpl-2.0.html
+
+Short description (150 chars max).
+
+== Description ==
+Full description...
+
+== Installation ==
+1. Step one
+2. Step two
+
+== Frequently Asked Questions ==
+= Question? =
+Answer.
+
+== Screenshots ==
+1. Description of first screenshot
+
+== Changelog ==
+= 1.0.0 =
+* Initial release
+
+== Upgrade Notice ==
+= 1.0.0 =
+Initial release.
+```
+
+---
+
+## ⚠️ COMMON MISTAKES TO AVOID
+
+### 1. Plugin Slug Issues
+- Cannot start with trademark terms (e.g., "woocommerce-addon")
+- Cannot contain "wordpress" or "plugin"
+- Use only lowercase letters, numbers, hyphens
+
+### 2. No Tracking Without Consent
+- No external API calls without user permission
+- No usage data collection without opt-in
+- Disclose any external connections in readme
+
+### 3. No Obfuscated Code
+- All code must be human-readable
+- No encoded/encrypted PHP
+- No minified PHP (minified JS/CSS is fine)
+
+### 4. No Trialware
+- Don't advertise "Pro" features excessively
+- Don't lock basic features behind paywall
+- Plugin must be fully functional
+
+### 5. No External Executable Code
+- Don't load PHP from external servers
+- JavaScript libraries must be bundled or use proper CDN
+- Use WordPress default libraries when available
+
+---
+
+## ✅ PRE-SUBMISSION CHECKLIST
+
+### Security
+- [ ] All output is escaped (esc_html, esc_attr, esc_url, wp_kses_post)
+- [ ] All input is sanitized (sanitize_text_field, absint, sanitize_email, map_deep)
+- [ ] Nonce verification on all forms and AJAX
+- [ ] Capability checks on all admin functions
+- [ ] Prepared statements for all database queries
+- [ ] WP_Filesystem for file operations (not is_writable, file_put_contents)
+
+### Code Quality
+- [ ] All functions/classes/constants prefixed
+- [ ] Translators comments on placeholder strings
+- [ ] No deprecated functions
+- [ ] PHP 7.4+ compatibility
+- [ ] WordPress Coding Standards followed
+- [ ] Proper phpcs:ignore comments with explanations
+
+### Headers & Readme
+- [ ] Plugin URI ≠ Author URI
+- [ ] Text domain matches slug
+- [ ] Tested up to is current WP version
+- [ ] Stable tag matches version in main plugin file
+- [ ] Max 5 tags in readme
+- [ ] Privacy policy included if collecting data
+
+### Files
+- [ ] index.php in every directory
+- [ ] uninstall.php for cleanup
+- [ ] No external dependencies without bundling
+
+### Testing
+- [ ] Test in WordPress Playground
+- [ ] Run WordPress Plugin Check (official plugin)
+- [ ] Test activation/deactivation/uninstall
+- [ ] Test with WP_DEBUG enabled
+- [ ] Test with latest WordPress version
+
+---
+
+## 🔧 USEFUL TOOLS
+
+1. **WordPress Plugin Check** - Official plugin checker (install from WP.org)
+2. **PHP_CodeSniffer with WordPress-Coding-Standards**
+3. **WordPress Playground** - Test without local install (playground.wordpress.net)
+4. **Query Monitor** - Debug database queries
+
+---
+
+## 📚 OFFICIAL RESOURCES
+
+- Plugin Guidelines: https://developer.wordpress.org/plugins/wordpress-org/detailed-plugin-guidelines/
+- Plugin Developer FAQ: https://developer.wordpress.org/plugins/wordpress-org/plugin-developer-faq/
+- Coding Standards: https://developer.wordpress.org/coding-standards/wordpress-coding-standards/
+- Security: https://developer.wordpress.org/plugins/security/
+
+---
+
+## 📞 SUBMISSION PROCESS
+
+1. Submit at: https://wordpress.org/plugins/developers/add/
+2. Review takes 1-10 business days (target: 5 days)
+3. One submission at a time only
+4. Plugin slug is permanent after approval
+5. Respond promptly to reviewer feedback
+6. Don't resubmit - wait for review response
+
+---
+
+## 🔍 PHPCS COMMON IGNORE PATTERNS
+
+```php
+// For direct database queries (security plugins, custom tables)
+// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Security plugin requires real-time data.
+
+// For nonce verified in parent function
+// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Nonce verified in handle_ajax() before calling this method.
+
+// For array sanitization with map_deep
+// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Input is sanitized via map_deep with sanitize_text_field.
+
+// For WordPress core constants
+// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedConstantFound -- WordPress core constant.
+
+// For table name in SQL (can't use placeholders for identifiers)
+// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- Safe table name using esc_sql with hardcoded suffix.
+
+// For schema changes (CREATE/DROP TABLE)
+// phpcs:ignore WordPress.DB.DirectDatabaseQuery.SchemaChange -- Required for plugin table management.
+
+// For paginate_links output (returns safe HTML)
+// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- paginate_links() returns safe HTML.
+```
+
+---
+
+## 📋 QUICK REFERENCE CARD
+
+| Input Type | Sanitization Function |
+|------------|----------------------|
+| Text field | `sanitize_text_field()` |
+| Email | `sanitize_email()` |
+| URL | `esc_url_raw()` (for DB) / `esc_url()` (for output) |
+| Integer | `absint()` or `intval()` |
+| File name | `sanitize_file_name()` |
+| HTML class | `sanitize_html_class()` |
+| Key/slug | `sanitize_key()` |
+| Textarea | `sanitize_textarea_field()` |
+| HTML | `wp_kses_post()` or `wp_kses()` |
+| Array | `map_deep( $array, 'sanitize_text_field' )` |
+
+| Output Context | Escaping Function |
+|----------------|-------------------|
+| HTML content | `esc_html()` |
+| HTML attribute | `esc_attr()` |
+| URL | `esc_url()` |
+| JavaScript | `esc_js()` |
+| HTML with tags | `wp_kses_post()` |
+| Translation | `esc_html__()`, `esc_attr__()` |
+
+---
+
+**Document Version:** 1.0
+**Last Updated:** December 2024
+**Created for:** WordPress Plugin Development Best Practices

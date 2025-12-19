@@ -1,16 +1,17 @@
 <?php
 /**
- * Plugin Name: X Security by Liveupx.com
- * Plugin URI: https://liveupx.com
- * Description: Complete WordPress security solution - Login protection, firewall, 2FA, file monitoring, database security and more.
- * Version: 1.0.0
- * Author: Liveupx.com
+ * Plugin Name: X Security
+ * Plugin URI: https://liveupx.com/x-security
+ * Description: Complete WordPress security solution - Login protection, firewall, brute force protection, IP blocking, activity logging, and more. Developed by Liveupx.com
+ * Version: 1.5.0
+ * Author: Liveupx
  * Author URI: https://liveupx.com
  * License: GPL v2 or later
+ * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain: x-security
  * Domain Path: /languages
  * Requires at least: 5.0
- * Tested up to: 6.7
+ * Tested up to: 6.9
  * Requires PHP: 7.4
  */
 
@@ -19,20 +20,20 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('XSEC_VERSION', '1.0.0');
+define('XSEC_VERSION', '1.5.0');
 define('XSEC_DB_VERSION', '1.0.0');
 define('XSEC_PLUGIN_FILE', __FILE__);
 define('XSEC_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('XSEC_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('XSEC_PLUGIN_BASENAME', plugin_basename(__FILE__));
 
-// Database table names
-global $wpdb;
-define('XSEC_TBL_LOGIN_LOCKOUT', $wpdb->prefix . 'xsec_login_lockouts');
-define('XSEC_TBL_FAILED_LOGINS', $wpdb->prefix . 'xsec_failed_logins');
-define('XSEC_TBL_ACTIVITY_LOG', $wpdb->prefix . 'xsec_activity_log');
-define('XSEC_TBL_BLOCKED_IPS', $wpdb->prefix . 'xsec_blocked_ips');
-define('XSEC_TBL_WHITELIST_IPS', $wpdb->prefix . 'xsec_whitelist_ips');
+/**
+ * Get database table name
+ */
+function xsec_get_table($table) {
+    global $wpdb;
+    return $wpdb->prefix . 'xsec_' . $table;
+}
 
 // Include required files
 require_once XSEC_PLUGIN_DIR . 'classes/class-xsec-config.php';
@@ -96,7 +97,7 @@ class X_Security {
     }
     
     public function plugins_loaded() {
-        load_plugin_textdomain('x-security', false, dirname(XSEC_PLUGIN_BASENAME) . '/languages');
+        // Translations are automatically loaded by WordPress.org for hosted plugins
     }
 }
 
@@ -108,7 +109,8 @@ add_action('plugins_loaded', 'xsec_init', 1);
 
 // Add settings link
 add_filter('plugin_action_links_' . XSEC_PLUGIN_BASENAME, function($links) {
-    $settings = '<a href="' . admin_url('admin.php?page=x-security') . '">' . __('Settings', 'x-security') . '</a>';
+    $settings_url = esc_url(admin_url('admin.php?page=x-security'));
+    $settings = '<a href="' . $settings_url . '">' . esc_html__('Settings', 'x-security') . '</a>';
     array_unshift($links, $settings);
     return $links;
 });

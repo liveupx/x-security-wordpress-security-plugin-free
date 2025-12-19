@@ -164,17 +164,21 @@ class XSEC_Admin {
      */
     public function render_dashboard() {
         global $wpdb;
-        
+
         $score = XSEC_Helper::get_security_score();
-        
-        // Stats
-        $blocked_ips = $wpdb->get_var("SELECT COUNT(*) FROM " . XSEC_TBL_BLOCKED_IPS);
-        $active_lockouts = $wpdb->get_var("SELECT COUNT(*) FROM " . XSEC_TBL_LOGIN_LOCKOUT . " WHERE release_time > NOW()");
-        $events_today = $wpdb->get_var("SELECT COUNT(*) FROM " . XSEC_TBL_ACTIVITY_LOG . " WHERE DATE(event_time) = CURDATE()");
-        
-        // Recent activity
+
+        // Stats.
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Dashboard stats require real-time data.
+        $blocked_ips = $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->prefix}xsec_blocked_ips" );
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Dashboard stats require real-time data.
+        $active_lockouts = $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->prefix}xsec_login_lockouts WHERE release_time > NOW()" );
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Dashboard stats require real-time data.
+        $events_today = $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->prefix}xsec_activity_log WHERE DATE(event_time) = CURDATE()" );
+
+        // Recent activity.
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Dashboard requires real-time activity data.
         $recent_activity = $wpdb->get_results(
-            "SELECT * FROM " . XSEC_TBL_ACTIVITY_LOG . " ORDER BY event_time DESC LIMIT 10"
+            "SELECT * FROM {$wpdb->prefix}xsec_activity_log ORDER BY event_time DESC LIMIT 10"
         );
         
         $this->render_header(__('Dashboard', 'x-security'));
@@ -469,13 +473,15 @@ class XSEC_Admin {
      */
     public function render_login() {
         global $wpdb;
-        
+
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Security page requires real-time lockout data.
         $lockouts = $wpdb->get_results(
-            "SELECT * FROM " . XSEC_TBL_LOGIN_LOCKOUT . " ORDER BY lockout_time DESC LIMIT 50"
+            "SELECT * FROM {$wpdb->prefix}xsec_login_lockouts ORDER BY lockout_time DESC LIMIT 50"
         );
-        
+
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Security page requires real-time failed login data.
         $failed_logins = $wpdb->get_results(
-            "SELECT * FROM " . XSEC_TBL_FAILED_LOGINS . " ORDER BY attempt_time DESC LIMIT 50"
+            "SELECT * FROM {$wpdb->prefix}xsec_failed_logins ORDER BY attempt_time DESC LIMIT 50"
         );
         
         $this->render_header(__('Login Security', 'x-security'));
@@ -569,13 +575,21 @@ class XSEC_Admin {
     public function render_firewall() {
         $settings = $this->config->get_all();
         $htaccess_file = ABSPATH . '.htaccess';
-        $htaccess_writable = is_writable($htaccess_file);
-        $htaccess_exists = file_exists($htaccess_file);
-        
+
+        // Initialize WP_Filesystem.
+        if ( ! function_exists( 'WP_Filesystem' ) ) {
+            require_once ABSPATH . 'wp-admin/includes/file.php';
+        }
+        WP_Filesystem();
+        global $wp_filesystem;
+
+        $htaccess_exists    = $wp_filesystem && $wp_filesystem->exists( $htaccess_file );
+        $htaccess_writable  = $htaccess_exists && $wp_filesystem->is_writable( $htaccess_file );
+
         $rules_active = false;
-        if ($htaccess_exists) {
-            $content = file_get_contents($htaccess_file);
-            $rules_active = strpos($content, '# BEGIN X Security') !== false;
+        if ( $htaccess_exists && $wp_filesystem ) {
+            $content      = $wp_filesystem->get_contents( $htaccess_file );
+            $rules_active = strpos( $content, '# BEGIN X Security' ) !== false;
         }
         
         $this->render_header(__('Firewall', 'x-security'));
@@ -672,10 +686,12 @@ class XSEC_Admin {
      */
     public function render_ip_manager() {
         global $wpdb;
-        
-        $blocked_ips = $wpdb->get_results("SELECT * FROM " . XSEC_TBL_BLOCKED_IPS . " ORDER BY blocked_time DESC");
-        $whitelisted_ips = $wpdb->get_results("SELECT * FROM " . XSEC_TBL_WHITELIST_IPS . " ORDER BY added_time DESC");
-        $current_ip = XSEC_Helper::get_ip();
+
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- IP manager requires real-time blocked IP data.
+        $blocked_ips = $wpdb->get_results( "SELECT * FROM {$wpdb->prefix}xsec_blocked_ips ORDER BY blocked_time DESC" );
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- IP manager requires real-time whitelist data.
+        $whitelisted_ips = $wpdb->get_results( "SELECT * FROM {$wpdb->prefix}xsec_whitelist_ips ORDER BY added_time DESC" );
+        $current_ip      = XSEC_Helper::get_ip();
         
         $this->render_header(__('IP Manager', 'x-security'));
         ?>
@@ -790,18 +806,24 @@ class XSEC_Admin {
      */
     public function render_logs() {
         global $wpdb;
-        
-        $page = isset($_GET['paged']) ? max(1, intval($_GET['paged'])) : 1;
+
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Pagination uses page number only, nonce not needed for read-only display.
+        $page     = isset( $_GET['paged'] ) ? max( 1, intval( $_GET['paged'] ) ) : 1;
         $per_page = 50;
-        $offset = ($page - 1) * $per_page;
-        
-        $total = (int) $wpdb->get_var("SELECT COUNT(*) FROM " . XSEC_TBL_ACTIVITY_LOG);
-        $total_pages = ceil($total / $per_page);
-        
-        $logs = $wpdb->get_results($wpdb->prepare(
-            "SELECT * FROM " . XSEC_TBL_ACTIVITY_LOG . " ORDER BY event_time DESC LIMIT %d OFFSET %d",
-            $per_page, $offset
-        ));
+        $offset   = ( $page - 1 ) * $per_page;
+
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Security log requires real-time data.
+        $total       = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->prefix}xsec_activity_log" );
+        $total_pages = ceil( $total / $per_page );
+
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Security log requires real-time data, table name is safe.
+        $logs = $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT * FROM {$wpdb->prefix}xsec_activity_log ORDER BY event_time DESC LIMIT %d OFFSET %d",
+                $per_page,
+                $offset
+            )
+        );
         
         $this->render_header(__('Activity Log', 'x-security'));
         ?>
@@ -841,6 +863,7 @@ class XSEC_Admin {
                             <div class="tablenav-pages">
                                 <span class="displaying-num"><?php echo esc_html($total); ?> items</span>
                                 <?php
+                                // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- paginate_links() returns safe HTML with escaped URLs.
                                 echo paginate_links(array(
                                     'base' => add_query_arg('paged', '%#%'),
                                     'format' => '',

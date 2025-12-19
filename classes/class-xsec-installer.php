@@ -42,10 +42,11 @@ class XSEC_Installer {
         
         $charset_collate = $wpdb->get_charset_collate();
         
-        require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+        require_once ABSPATH . 'wp-admin/includes/upgrade.php';
         
         // Login lockouts table
-        $sql1 = "CREATE TABLE " . XSEC_TBL_LOGIN_LOCKOUT . " (
+        $table_name = $wpdb->prefix . 'xsec_login_lockouts';
+        $sql = "CREATE TABLE $table_name (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             ip_address varchar(100) NOT NULL,
             username varchar(255) NOT NULL,
@@ -56,10 +57,11 @@ class XSEC_Installer {
             KEY ip_address (ip_address),
             KEY release_time (release_time)
         ) $charset_collate;";
-        dbDelta($sql1);
+        dbDelta($sql);
         
         // Failed logins table
-        $sql2 = "CREATE TABLE " . XSEC_TBL_FAILED_LOGINS . " (
+        $table_name = $wpdb->prefix . 'xsec_failed_logins';
+        $sql = "CREATE TABLE $table_name (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             ip_address varchar(100) NOT NULL,
             username varchar(255) NOT NULL,
@@ -68,10 +70,11 @@ class XSEC_Installer {
             KEY ip_address (ip_address),
             KEY attempt_time (attempt_time)
         ) $charset_collate;";
-        dbDelta($sql2);
+        dbDelta($sql);
         
         // Activity log table
-        $sql3 = "CREATE TABLE " . XSEC_TBL_ACTIVITY_LOG . " (
+        $table_name = $wpdb->prefix . 'xsec_activity_log';
+        $sql = "CREATE TABLE $table_name (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             user_id bigint(20) DEFAULT 0,
             username varchar(255) DEFAULT '',
@@ -85,10 +88,11 @@ class XSEC_Installer {
             KEY event_time (event_time),
             KEY ip_address (ip_address)
         ) $charset_collate;";
-        dbDelta($sql3);
+        dbDelta($sql);
         
         // Blocked IPs table
-        $sql4 = "CREATE TABLE " . XSEC_TBL_BLOCKED_IPS . " (
+        $table_name = $wpdb->prefix . 'xsec_blocked_ips';
+        $sql = "CREATE TABLE $table_name (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             ip_address varchar(100) NOT NULL,
             reason varchar(255) DEFAULT '',
@@ -99,10 +103,11 @@ class XSEC_Installer {
             UNIQUE KEY ip_address (ip_address),
             KEY blocked_time (blocked_time)
         ) $charset_collate;";
-        dbDelta($sql4);
+        dbDelta($sql);
         
         // Whitelist IPs table
-        $sql5 = "CREATE TABLE " . XSEC_TBL_WHITELIST_IPS . " (
+        $table_name = $wpdb->prefix . 'xsec_whitelist_ips';
+        $sql = "CREATE TABLE $table_name (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             ip_address varchar(100) NOT NULL,
             description varchar(255) DEFAULT '',
@@ -110,7 +115,7 @@ class XSEC_Installer {
             PRIMARY KEY (id),
             UNIQUE KEY ip_address (ip_address)
         ) $charset_collate;";
-        dbDelta($sql5);
+        dbDelta($sql);
         
         // Save DB version
         update_option('xsec_db_version', XSEC_DB_VERSION);
@@ -130,10 +135,13 @@ class XSEC_Installer {
     
     /**
      * Check if tables exist
+     *
+     * @return bool
      */
     public static function tables_exist() {
         global $wpdb;
-        $table = XSEC_TBL_ACTIVITY_LOG;
-        return $wpdb->get_var("SHOW TABLES LIKE '$table'") === $table;
+        $table = $wpdb->prefix . 'xsec_activity_log';
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Table existence check during activation.
+        return $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) === $table;
     }
 }
